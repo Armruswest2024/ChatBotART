@@ -18,6 +18,19 @@ class User(Base):
     orders = relationship("Order", back_populates="user")
 
 
+class Category(Base):
+    """Категории (подкаталоги)"""
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    emoji = Column(String(10), nullable=True)  # эмодзи для красивого отображения
+    sort_order = Column(Integer, default=0)  # порядок сортировки
+    is_active = Column(Boolean, default=True)
+
+    products = relationship("Product", back_populates="category")
+
+
 class Product(Base):
     """Товары"""
     __tablename__ = "products"
@@ -27,9 +40,11 @@ class Product(Base):
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)
     file_path = Column(String(500), nullable=True)  # путь к файлу для выдачи
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)  # категория (NULL = без категории)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    category = relationship("Category", back_populates="products")
     orders = relationship("Order", back_populates="product")
 
 
