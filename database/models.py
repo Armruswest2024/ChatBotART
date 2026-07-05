@@ -41,7 +41,6 @@ class Product(Base):
     price = Column(Float, nullable=False)
     file_path = Column(String(500), nullable=True)  # путь к файлу для выдачи
     photo_path = Column(String(500), nullable=True)  # путь к фото товара
-    video_path = Column(String(500), nullable=True)  # путь к видео товара
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)  # категория (NULL = без категории)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

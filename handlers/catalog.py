@@ -142,12 +142,7 @@ async def show_product(callback: CallbackQuery):
         photo = FSInputFile(product.photo_path)
         await callback.message.answer_photo(photo=photo, caption=text)
 
-    # Отправляем видео если есть
-    if product.video_path and os.path.exists(product.video_path):
-        video = FSInputFile(product.video_path)
-        await callback.message.answer_video(video=video, caption=f"<b>{product.name}</b> — видео обзор")
-
-    # Кнопки покупки — всегда отдельным сообщением
+    # Кнопки покупки — всегда
     await callback.message.answer("Выбери способ оплаты:", reply_markup=keyboard)
 
     await callback.answer()

@@ -29,7 +29,6 @@ class AddProductFSM(StatesGroup):
     category = State()
     file = State()
     photo = State()
-    video = State()
 
 
 class EditProductFSM(StatesGroup):
@@ -399,44 +398,6 @@ async def admin_add_photo(message: Message, state: FSMContext):
             await message.answer("❌ Не удалось скачать фото. Попробуй другое или -.")
             return
 
-    await state.update_data(photo_path=photo_path)
-    await message.answer(
-        "🎬 Отправь видео товара (или <b>-</b> чтобы пропустить):\n\n"
-        "Видео-обзор или демонстрация товара.\n"
-        "<i>Макс. размер 50 МБ</i>"
-    )
-    await state.set_state(AddProductFSM.video)
-
-
-@router.message(AddProductFSM.video)
-async def admin_add_video(message: Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-
-    data = await state.get_data()
-    video_path = None
-
-    # Поддерживаем и видео и кружочки (video_note)
-    video = message.video or message.video_note
-    if video:
-        # Проверяем размер (макс 50 МБ)
-        if video.file_size and video.file_size > 50 * 1024 * 1024:
-            await message.answer("❌ Видео слишком большое (макс 50 МБ). Попробуй другое или -.")
-            return
-
-        await message.answer("⏳ Скачиваю видео, подожди...")
-
-        files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
-        os.makedirs(files_dir, exist_ok=True)
-        ext = "mp4"
-        video_path = os.path.join(files_dir, f"video_{video.file_id}.{ext}")
-        try:
-            await message.bot.download(video, video_path)
-        except Exception as e:
-            logger.error(f"Ошибка скачивания видео: {e}")
-            await message.answer("❌ Не удалось скачать видео. Попробуй меньший файл или -.")
-            return
-
     # Создаём товар
     async with async_session() as session:
         product = Product(
@@ -444,8 +405,7 @@ async def admin_add_video(message: Message, state: FSMContext):
             description=data["description"],
             price=data["price"],
             file_path=data.get("file_path"),
-            photo_path=data.get("photo_path"),
-            video_path=video_path,
+            photo_path=photo_path,
             category_id=data.get("category_id"),
             is_active=True,
         )
@@ -455,10 +415,8 @@ async def admin_add_video(message: Message, state: FSMContext):
     media_info = []
     if data.get("file_path"):
         media_info.append("📁 Файл для выдачи")
-    if data.get("photo_path"):
+    if photo_path:
         media_info.append("📸 Фото")
-    if video_path:
-        media_info.append("🎬 Видео")
 
     await message.answer(
         f"✅ Товар добавлен!\n\n"
