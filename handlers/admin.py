@@ -367,6 +367,10 @@ async def admin_add_file(message: Message, state: FSMContext):
     file_path = None
 
     if message.document:
+        # Проверяем размер (макс 50 МБ — лимит Telegram API)
+        if message.document.file_size and message.document.file_size > 50 * 1024 * 1024:
+            await message.answer("❌ Файл слишком большой (макс 50 МБ). Загрузи на сервер напрямую.")
+            return
         files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
         os.makedirs(files_dir, exist_ok=True)
         file_path = os.path.join(files_dir, message.document.file_name)
