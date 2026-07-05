@@ -25,6 +25,10 @@ cd "$INSTALL_DIR"
 echo -e "  → git pull..."
 git pull
 
+# Миграция БД
+echo -e "  → миграция БД..."
+bash migrate.sh
+
 # Обновление зависимостей
 echo -e "  → pip install..."
 source venv/bin/activate
