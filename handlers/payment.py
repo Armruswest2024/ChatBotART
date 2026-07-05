@@ -1,12 +1,16 @@
-"""Обработчик оплаты"""
+"""Обработчик оплаты — создание заказа и переход к оплате."""
+import logging
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from sqlalchemy import select
 
-from database.db import get_session
-from database.models import Product, Order, User
+from database.db import async_session
+from database.models import Product, Order
 from payments import prodamus, platega
 
-router = Router()
+router = logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @router.callback_query(F.data.startswith("buy_"))
@@ -17,8 +21,7 @@ async def process_buy(callback: CallbackQuery):
     product_id = int(parts[2])
 
     # Получаем товар
-    session = await get_session()
-    try:
+    async with async_session() as session:
         product = await session.get(Product, product_id)
         if not product:
             await callback.message.answer("Товар не найден 😕")
@@ -36,13 +39,12 @@ async def process_buy(callback: CallbackQuery):
         session.add(order)
         await session.commit()
         await session.refresh(order)
-    finally:
-        await session.close()
 
     # Формируем URL для оплаты
     success_url = f"https://t.me/{callback.bot.username}?start=paid_{order.id}"
     fail_url = f"https://t.me/{callback.bot.username}?start=fail_{order.id}"
 
+    # Создаём платёж
     if payment_system == "prodamus":
         payment_url = await prodamus.create_payment(
             order_id=order.id,
@@ -61,6 +63,15 @@ async def process_buy(callback: CallbackQuery):
         )
     else:
         await callback.message.answer("Неизвестная платёжная система")
+        await callback.answer()
+        return
+
+    # Проверяем, что URL получен
+    if not payment_url:
+        await callback.message.answer(
+            "❌ Не удалось создать платёж.\n"
+            "Попробуй позже или выбери другой способ оплаты."
+        )
         await callback.answer()
         return
 

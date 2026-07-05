@@ -1,10 +1,10 @@
-"""Автовыдача товаров"""
+"""Автовыдача товаров после оплаты"""
 import os
 import logging
 
-from aiogram import Bot
 from aiogram.types import FSInputFile
 
+from core import bot
 from database.models import Order, Product, User
 
 logger = logging.getLogger(__name__)
@@ -31,15 +31,16 @@ async def deliver_file(order: Order, session):
             return
 
         # Отправляем файл
-        from bot import bot
         file = FSInputFile(product.file_path)
         await bot.send_document(
             chat_id=user.telegram_id,
             document=file,
-            caption=f"✅ Оплата получена!\n\n"
-                   f"📦 Товар: {product.name}\n"
-                   f"💰 Сумма: {order.amount} ₽\n\n"
-                   "Спасибо за покупку! 🎉"
+            caption=(
+                f"✅ Оплата получена!\n\n"
+                f"📦 Товар: {product.name}\n"
+                f"💰 Сумма: {order.amount} ₽\n\n"
+                "Спасибо за покупку! 🎉"
+            )
         )
 
         # Обновляем статус
@@ -50,3 +51,17 @@ async def deliver_file(order: Order, session):
 
     except Exception as e:
         logger.error(f"Ошибка выдачи файла: {e}")
+
+
+async def send_payment_error(chat_id: int, order_id: int):
+    """Уведомление об ошибке оплаты"""
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"❌ Ошибка при создании оплаты (заказ #{order_id})\n\n"
+                "Попробуйте ещё раз или выберите другой способ оплаты."
+            )
+        )
+    except Exception as e:
+        logger.error(f"Ошибка отправки уведомления: {e}")

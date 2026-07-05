@@ -13,6 +13,3 @@ google-genai>=0.1.0
 
 # Environment
 python-dotenv>=1.0.0
-
-# Web server (для webhook)
-aiohttp-web>=3.9.0
