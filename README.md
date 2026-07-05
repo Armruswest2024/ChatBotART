@@ -7,7 +7,7 @@ Telegram-бот для продажи цифровых товаров с AI-ко
 - 🛍 **Каталог товаров** — просмотр, выбор, оплата
 - 💳 **Оплата** — интеграция с Prodamus и Platega (карты, СБП, QR)
 - 📦 **Автовыдача** — файл выдаётся покупателю сразу после оплаты
-- 💬 **AI-консультант** — Gemini Flash помогает с выбором товаров
+- 💬 **AI-консультант** — Llama 3 помогает с выбором товаров
 - 📋 **История покупок** — покупатель видит свои заказы
 - 🔧 **Админ-панель** — добавление товаров, просмотр заказов и пользователей
 
@@ -18,7 +18,7 @@ Telegram-бот для продажи цифровых товаров с AI-ко
 | Язык | Python 3.11+ |
 | Telegram Bot API | aiogram 3 |
 | База данных | SQLAlchemy 2 + SQLite |
-| AI | Google Gemini Flash |
+| AI | Groq (Llama 3.3 70B) |
 | Webhook-сервер | aiohttp |
 
 ---
@@ -97,7 +97,7 @@ nano .env
 | Параметр | Где взять | Обязательно |
 |----------|-----------|-------------|
 | `BOT_TOKEN` | [@BotFather](https://t.me/BotFather) | Да |
-| `GOOGLE_API_KEY` | [Google AI Studio](https://aistudio.google.com/) | Да |
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com/) | Да |
 | `ADMIN_ID` | [@userinfobot](https://t.me/userinfobot) | Да |
 | `PRODAMUS_SHOP_ID` | [prodamus.ru](https://prodamus.ru/) | Для оплаты |
 | `PRODAMUS_SECRET_KEY` | Prodamus → Настройки | Для оплаты |
@@ -116,7 +116,8 @@ nano .env
 | `systemctl restart chatbot` | Перезапуск |
 | `systemctl stop chatbot` | Остановка |
 | `journalctl -u chatbot -f` | Логи в реальном времени |
-| `bash update.sh` | Обновить бота |
+| `bash update.sh` | Обновить бота (git pull + migrate + restart) |
+| `chmod +x update.sh` | Дать права на запуск скрипта (если Permission denied) |
 | `bash logs.sh` | Последние 100 строк логов |
 
 ---
@@ -159,7 +160,7 @@ ChatBotART/
 │   └── platega.py      Platega API
 │
 ├── ai/
-│   └── consultant.py   Google Gemini Flash
+│   └── consultant.py   Groq (Llama 3)
 │
 ├── services/
 │   └── delivery.py     Автовыдача файлов
@@ -207,3 +208,9 @@ systemctl restart chatbot
 journalctl -u chatbot -n 50
 ```
 Посмотри ошибки и исправь `.env`.
+
+**Permission denied при update.sh?**
+```bash
+chmod +x update.sh && ./update.sh
+```
+`chmod +x` — даёт скрипту права на выполнение. Без этой команды bash не может запустить скрипт.
