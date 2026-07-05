@@ -9,7 +9,7 @@ from database.db import async_session
 from database.models import Product, Order
 from payments import prodamus, platega
 
-router = logger = logging.getLogger(__name__)
+router = Router()
 logger = logging.getLogger(__name__)
 
 
