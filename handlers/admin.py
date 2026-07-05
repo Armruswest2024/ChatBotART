@@ -388,7 +388,12 @@ async def admin_add_photo(message: Message, state: FSMContext):
         files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
         os.makedirs(files_dir, exist_ok=True)
         photo_path = os.path.join(files_dir, f"photo_{photo.file_id}.jpg")
-        await message.bot.download(photo, photo_path)
+        try:
+            await message.bot.download(photo, photo_path)
+        except Exception as e:
+            logger.error(f"Ошибка скачивания фото: {e}")
+            await message.answer("❌ Не удалось скачать фото. Попробуй другое или пропусти (-).")
+            return
 
     await state.update_data(photo_path=photo_path)
     await message.answer(
@@ -406,11 +411,19 @@ async def admin_add_video(message: Message, state: FSMContext):
     data = await state.get_data()
     video_path = None
 
-    if message.video:
+    # Поддерживаем и видео и кружочки (video_note)
+    video = message.video or message.video_note
+    if video:
         files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
         os.makedirs(files_dir, exist_ok=True)
-        video_path = os.path.join(files_dir, f"video_{message.video.file_id}.mp4")
-        await message.bot.download(message.video, video_path)
+        ext = "mp4"
+        video_path = os.path.join(files_dir, f"video_{video.file_id}.{ext}")
+        try:
+            await message.bot.download(video, video_path)
+        except Exception as e:
+            logger.error(f"Ошибка скачивания видео: {e}")
+            await message.answer("❌ Не удалось скачать видео. Попробуй меньший файл или пропусти (-).")
+            return
 
     # Создаём товар
     async with async_session() as session:
