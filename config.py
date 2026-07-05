@@ -7,8 +7,8 @@ load_dotenv()
 # Telegram
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Google Gemini Flash
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# Groq (AI)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Prodamus
 PRODAMUS_SHOP_ID = os.getenv("PRODAMUS_SHOP_ID")

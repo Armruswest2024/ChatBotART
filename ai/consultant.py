@@ -1,19 +1,21 @@
-"""AI-консультант на базе Google Gemini Flash"""
+"""AI-консультант на базе Groq (Llama 3)"""
 import asyncio
 import logging
 
-from google import genai
-from google.api_core import exceptions
+from openai import AsyncOpenAI, RateLimitError, APIError
 
 import config
 
 logger = logging.getLogger(__name__)
 
-# Инициализация клиента
-client = genai.Client(api_key=config.GOOGLE_API_KEY)
+# Клиент Groq (совместим с OpenAI API)
+client = AsyncOpenAI(
+    api_key=config.GROQ_API_KEY,
+    base_url="https://api.groq.com/openai/v1",
+)
 
-# Модель (1.5-flash стабильнее на бесплатном тарифе)
-MODEL = "gemini-1.5-flash"
+# Модель
+MODEL = "llama-3.3-70b-versatile"
 
 # Системный промпт для консультанта
 SYSTEM_PROMPT = """Ты — дружелюбный консультант в магазине цифровых товаров.
@@ -28,36 +30,42 @@ async def get_ai_response(user_message: str, context: str = "") -> str:
     user_message — сообщение пользователя
     context — дополнительный контекст (информация о товарах и т.д.)
     """
-    # Формируем промпт
-    full_prompt = f"{SYSTEM_PROMPT}\n\n"
-    if context:
-        full_prompt += f"Контекст (каталог товаров):\n{context}\n\n"
-    full_prompt += f"Вопрос клиента: {user_message}"
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+    ]
 
-    # Повторные попытки при 429 (rate limit)
+    # Добавляем контекст каталога
+    if context:
+        messages.append({
+            "role": "system",
+            "content": f"Контекст (каталог товаров):\n{context}"
+        })
+
+    messages.append({"role": "user", "content": user_message})
+
+    # Повторные попытки при rate limit
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = client.models.generate_content(
+            response = await client.chat.completions.create(
                 model=MODEL,
-                contents=full_prompt
+                messages=messages,
+                max_tokens=500,
+                temperature=0.7,
             )
-            return response.text
+            return response.choices[0].message.content
 
-        except exceptions.TooManyRequests:
-            # Лимит запросов — ждём и повторяем
-            wait = (attempt + 1) * 5  # 5, 10, 15 секунд
-            logger.warning(f"Gemini 429: попытка {attempt+1}/{max_retries}, ожидание {wait}с")
+        except RateLimitError:
+            wait = (attempt + 1) * 5
+            logger.warning(f"Groq 429: попытка {attempt+1}/{max_retries}, ожидание {wait}с")
             await asyncio.sleep(wait)
 
-        except exceptions.PermissionDenied:
-            logger.error("Gemini: неверный API ключ (403)")
-            return "❌ Проблема с API-ключом. Обратись к администратору."
-
-        except Exception as e:
-            logger.error(f"Gemini ошибка: {e}")
+        except APIError as e:
+            logger.error(f"Groq API ошибка: {e}")
             return "Извини, сейчас не могу ответить. Попробуй позже 🛍"
 
-    # Все попытки исчерпаны
-    logger.error("Gemini: все попытки исчерпаны (429)")
+        except Exception as e:
+            logger.error(f"Groq ошибка: {e}")
+            return "Извини, сейчас не могу ответить. Попробуй позже 🛍"
+
     return "⚠️ Сервис временно перегружен. Попробуй через минуту или выбери товар из каталога 🛍"
