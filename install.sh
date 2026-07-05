@@ -77,7 +77,7 @@ if [ ! -f ".env" ]; then
     echo ""
 
     read -p "  BOT_TOKEN: " BOT_TOKEN
-    read -p "  GOOGLE_API_KEY: " GOOGLE_API_KEY
+    read -p "  GROQ_API_KEY: " GROQ_API_KEY
     read -p "  PRODAMUS_SHOP_ID: " PRODAMUS_SHOP_ID
     read -p "  PRODAMUS_SECRET_KEY: " PRODAMUS_SECRET_KEY
     read -p "  PRODAMUS_URL [https://your-domain.payform.ru/]: " PRODAMUS_URL
@@ -92,8 +92,8 @@ if [ ! -f ".env" ]; then
 # Telegram Bot
 BOT_TOKEN=$BOT_TOKEN
 
-# Google Gemini Flash
-GOOGLE_API_KEY=$GOOGLE_API_KEY
+# Groq AI
+GROQ_API_KEY=$GROQ_API_KEY
 
 # Prodamus
 PRODAMUS_SHOP_ID=$PRODAMUS_SHOP_ID
