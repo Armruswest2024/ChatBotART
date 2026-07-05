@@ -28,6 +28,8 @@ class AddProductFSM(StatesGroup):
     price = State()
     category = State()
     file = State()
+    photo = State()
+    video = State()
 
 
 class EditProductFSM(StatesGroup):
@@ -364,24 +366,81 @@ async def admin_add_file(message: Message, state: FSMContext):
         file_path = os.path.join(files_dir, message.document.file_name)
         await message.bot.download(message.document, file_path)
 
+    await state.update_data(file_path=file_path)
+    await message.answer(
+        "📸 Отправь фото товара (или <b>-</b> чтобы пропустить):\n\n"
+        "Фото будут показаны клиенту при просмотре товара."
+    )
+    await state.set_state(AddProductFSM.photo)
+
+
+@router.message(AddProductFSM.photo)
+async def admin_add_photo(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    data = await state.get_data()
+    photo_path = None
+
+    if message.photo:
+        # Берём фото максимального размера
+        photo = message.photo[-1]
+        files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
+        os.makedirs(files_dir, exist_ok=True)
+        photo_path = os.path.join(files_dir, f"photo_{photo.file_id}.jpg")
+        await message.bot.download(photo, photo_path)
+
+    await state.update_data(photo_path=photo_path)
+    await message.answer(
+        "🎬 Отправь видео товара (или <b>-</b> чтобы пропустить):\n\n"
+        "Видео-обзор или демонстрация товара."
+    )
+    await state.set_state(AddProductFSM.video)
+
+
+@router.message(AddProductFSM.video)
+async def admin_add_video(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    data = await state.get_data()
+    video_path = None
+
+    if message.video:
+        files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
+        os.makedirs(files_dir, exist_ok=True)
+        video_path = os.path.join(files_dir, f"video_{message.video.file_id}.mp4")
+        await message.bot.download(message.video, video_path)
+
+    # Создаём товар
     async with async_session() as session:
         product = Product(
             name=data["name"],
             description=data["description"],
             price=data["price"],
-            file_path=file_path,
+            file_path=data.get("file_path"),
+            photo_path=data.get("photo_path"),
+            video_path=video_path,
             category_id=data.get("category_id"),
             is_active=True,
         )
         session.add(product)
         await session.commit()
 
+    media_info = []
+    if data.get("file_path"):
+        media_info.append("📁 Файл для выдачи")
+    if data.get("photo_path"):
+        media_info.append("📸 Фото")
+    if video_path:
+        media_info.append("🎬 Видео")
+
     await message.answer(
         f"✅ Товар добавлен!\n\n"
         f"<b>{data['name']}</b>\n"
         f"{data['description']}\n"
         f"💰 {data['price']} ₽\n"
-        f"📁 {'Есть файл' if file_path else 'Без файла'}"
+        + ("\n".join(media_info) if media_info else "Без медиа")
     )
     await state.clear()
 

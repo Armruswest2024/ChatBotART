@@ -1,6 +1,8 @@
 """Каталог товаров — просмотр по категориям и выбор для покупки."""
+import os
+
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from sqlalchemy import select
 
 from database.db import async_session
@@ -71,7 +73,6 @@ async def show_category(callback: CallbackQuery):
 
     async with async_session() as session:
         if cat_id == 0:
-            # Товары без категории
             result = await session.execute(
                 select(Product).where(Product.is_active == True, Product.category_id == None)
             )
@@ -81,7 +82,6 @@ async def show_category(callback: CallbackQuery):
             )
         products = result.scalars().all()
 
-        # Название категории
         if cat_id > 0:
             cat = await session.get(Category, cat_id)
             cat_name = f"{cat.emoji or ''} {cat.name}" if cat else "Категория"
@@ -111,7 +111,7 @@ async def show_category(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("product_"))
 async def show_product(callback: CallbackQuery):
-    """Показать карточку товара"""
+    """Показать карточку товара с фото/видео"""
     product_id = int(callback.data.split("_")[1])
 
     async with async_session() as session:
@@ -122,6 +122,13 @@ async def show_product(callback: CallbackQuery):
         await callback.answer()
         return
 
+    # Текст описания
+    text = (
+        f"<b>{product.name}</b>\n\n"
+        f"{product.description or 'Описание отсутствует'}\n\n"
+        f"💰 Цена: <b>{product.price} ₽</b>"
+    )
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="💳 Prodamus", callback_data=f"buy_prodamus_{product.id}"),
@@ -130,11 +137,23 @@ async def show_product(callback: CallbackQuery):
         [InlineKeyboardButton(text="← Назад", callback_data="catalog")],
     ])
 
-    text = (
-        f"<b>{product.name}</b>\n\n"
-        f"{product.description or 'Описание отсутствует'}\n\n"
-        f"💰 Цена: <b>{product.price} ₽</b>\n\n"
-        "Выбери способ оплаты:"
-    )
-    await callback.message.answer(text, reply_markup=keyboard)
+    # Отправляем фото если есть
+    if product.photo_path and os.path.exists(product.photo_path):
+        photo = FSInputFile(product.photo_path)
+        await callback.message.answer_photo(
+            photo=photo,
+            caption=text,
+            reply_markup=keyboard,
+        )
+    # Отправляем видео если есть
+    elif product.video_path and os.path.exists(product.video_path):
+        video = FSInputFile(product.video_path)
+        await callback.message.answer_video(
+            video=video,
+            caption=text,
+            reply_markup=keyboard,
+        )
+    else:
+        await callback.message.answer(text, reply_markup=keyboard)
+
     await callback.answer()
