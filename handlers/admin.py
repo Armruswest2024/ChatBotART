@@ -385,6 +385,10 @@ async def admin_add_photo(message: Message, state: FSMContext):
     if message.photo:
         # Берём фото максимального размера
         photo = message.photo[-1]
+        # Проверяем размер (макс 10 МБ)
+        if photo.file_size and photo.file_size > 10 * 1024 * 1024:
+            await message.answer("❌ Фото слишком большое (макс 10 МБ). Попробуй другое или -.")
+            return
         files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
         os.makedirs(files_dir, exist_ok=True)
         photo_path = os.path.join(files_dir, f"photo_{photo.file_id}.jpg")
@@ -392,13 +396,14 @@ async def admin_add_photo(message: Message, state: FSMContext):
             await message.bot.download(photo, photo_path)
         except Exception as e:
             logger.error(f"Ошибка скачивания фото: {e}")
-            await message.answer("❌ Не удалось скачать фото. Попробуй другое или пропусти (-).")
+            await message.answer("❌ Не удалось скачать фото. Попробуй другое или -.")
             return
 
     await state.update_data(photo_path=photo_path)
     await message.answer(
         "🎬 Отправь видео товара (или <b>-</b> чтобы пропустить):\n\n"
-        "Видео-обзор или демонстрация товара."
+        "Видео-обзор или демонстрация товара.\n"
+        "<i>Макс. размер 50 МБ</i>"
     )
     await state.set_state(AddProductFSM.video)
 
@@ -414,6 +419,13 @@ async def admin_add_video(message: Message, state: FSMContext):
     # Поддерживаем и видео и кружочки (video_note)
     video = message.video or message.video_note
     if video:
+        # Проверяем размер (макс 50 МБ)
+        if video.file_size and video.file_size > 50 * 1024 * 1024:
+            await message.answer("❌ Видео слишком большое (макс 50 МБ). Попробуй другое или -.")
+            return
+
+        await message.answer("⏳ Скачиваю видео, подожди...")
+
         files_dir = os.path.join(os.path.dirname(__file__), "..", "files")
         os.makedirs(files_dir, exist_ok=True)
         ext = "mp4"
@@ -422,7 +434,7 @@ async def admin_add_video(message: Message, state: FSMContext):
             await message.bot.download(video, video_path)
         except Exception as e:
             logger.error(f"Ошибка скачивания видео: {e}")
-            await message.answer("❌ Не удалось скачать видео. Попробуй меньший файл или пропусти (-).")
+            await message.answer("❌ Не удалось скачать видео. Попробуй меньший файл или -.")
             return
 
     # Создаём товар
