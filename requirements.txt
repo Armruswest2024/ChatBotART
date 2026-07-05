@@ -1,0 +1,18 @@
+# Telegram Bot
+aiogram>=3.0.0
+
+# Database
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+
+# HTTP
+aiohttp>=3.9.0
+
+# AI (Google Gemini Flash)
+google-genai>=0.1.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Web server (для webhook)
+aiohttp-web>=3.9.0
