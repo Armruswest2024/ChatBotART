@@ -134,6 +134,7 @@ async def show_product(callback: CallbackQuery):
             InlineKeyboardButton(text="💳 Prodamus", callback_data=f"buy_prodamus_{product.id}"),
             InlineKeyboardButton(text="💳 Platega", callback_data=f"buy_platega_{product.id}"),
         ],
+        [InlineKeyboardButton(text="🛒 В корзину", callback_data=f"add_cart_{product.id}")],
         [InlineKeyboardButton(text="← Назад", callback_data="catalog")],
     ])
 

@@ -65,3 +65,17 @@ class Order(Base):
 
     user = relationship("User", back_populates="orders")
     product = relationship("Product", back_populates="orders")
+
+
+class Cart(Base):
+    """Корзина"""
+    __tablename__ = "cart"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    product = relationship("Product")

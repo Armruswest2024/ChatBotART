@@ -16,6 +16,17 @@ echo "Проверяю базу данных..."
 # Добавляем колонки если их нет (без ошибок если уже есть)
 sqlite3 "$DB" "ALTER TABLE products ADD COLUMN photo_path VARCHAR(500);" 2>/dev/null
 sqlite3 "$DB" "ALTER TABLE products ADD COLUMN video_path VARCHAR(500);" 2>/dev/null
-sqlite3 "$DB" "ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);" 2>/dev/null
+sqlite3 "$DB" "ALTER TABLE products ADD COLUMN category_id INTEGER;" 2>/dev/null
+
+# Создаём таблицу cart если её нет
+sqlite3 "$DB" "CREATE TABLE IF NOT EXISTS cart (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER DEFAULT 1,
+    created_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);" 2>/dev/null
 
 echo "Миграция завершена."

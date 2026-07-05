@@ -9,7 +9,7 @@ import config
 from database.db import init_db
 
 # Импорт хендлеров (aiogram-роутеры)
-from handlers import start, catalog, payment, consultant, admin, my_orders
+from handlers import start, catalog, payment, consultant, admin, my_orders, cart
 
 # Импорт webhook-хендлеров (aiohttp)
 from handlers.webhook import register_webhook_routes
@@ -28,6 +28,7 @@ dp.include_router(catalog.router)
 dp.include_router(payment.router)
 dp.include_router(admin.router)
 dp.include_router(my_orders.router)
+dp.include_router(cart.router)
 dp.include_router(consultant.router)
 
 

@@ -41,6 +41,11 @@ class AddCategoryFSM(StatesGroup):
     emoji = State()
 
 
+class BroadcastFSM(StatesGroup):
+    text = State()
+    confirm = State()
+
+
 # ── Главное меню ─────────────────────────────────────────────
 
 @router.message(F.text == "/admin")
@@ -55,6 +60,7 @@ async def cmd_admin(message: Message):
         [InlineKeyboardButton(text="➕ Добавить товар", callback_data="admin_add_product")],
         [InlineKeyboardButton(text="📋 Заказы", callback_data="admin_orders")],
         [InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users")],
+        [InlineKeyboardButton(text="📨 Рассылка", callback_data="admin_broadcast")],
     ])
     await message.answer("<b>🔧 Админ-панель</b>", reply_markup=keyboard)
 
@@ -71,6 +77,7 @@ async def admin_back(callback: CallbackQuery):
         [InlineKeyboardButton(text="➕ Добавить товар", callback_data="admin_add_product")],
         [InlineKeyboardButton(text="📋 Заказы", callback_data="admin_orders")],
         [InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users")],
+        [InlineKeyboardButton(text="📨 Рассылка", callback_data="admin_broadcast")],
     ])
     await callback.message.answer("<b>🔧 Админ-панель</b>", reply_markup=keyboard)
     await callback.answer()
@@ -501,4 +508,89 @@ async def admin_users(callback: CallbackQuery):
         lines.append(f"• {name} (ID: {u.telegram_id})")
 
     await callback.message.answer("\n".join(lines))
+    await callback.answer()
+
+
+# ── Рассылка ─────────────────────────────────────────────────
+
+@router.callback_query(F.data == "admin_broadcast")
+async def admin_broadcast(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔", show_alert=True)
+        return
+
+    await callback.message.answer(
+        "📨 <b>Рассылка</b>\n\n"
+        "Отправь текст сообщения, которое получат все пользователи.\n"
+        "Поддерживается HTML-разметка: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;"
+    )
+    await state.set_state(BroadcastFSM.text)
+    await callback.answer()
+
+
+@router.message(BroadcastFSM.text)
+async def admin_broadcast_preview(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    await state.update_data(text=message.text)
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Отправить", callback_data="broadcast_confirm"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast_cancel"),
+        ]
+    ])
+
+    await message.answer(
+        f"📨 <b>Предпросмотр:</b>\n\n"
+        f"{message.text}\n\n"
+        f"Отправить всем пользователям?",
+        reply_markup=keyboard
+    )
+    await state.set_state(BroadcastFSM.confirm)
+
+
+@router.callback_query(F.data == "broadcast_confirm", BroadcastFSM.confirm)
+async def admin_broadcast_send(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔", show_alert=True)
+        return
+
+    data = await state.get_data()
+    text = data["text"]
+
+    # Получаем всех пользователей
+    async with async_session() as session:
+        result = await session.execute(select(User))
+        users = result.scalars().all()
+
+    sent = 0
+    failed = 0
+
+    for user in users:
+        try:
+            from core import bot
+            await bot.send_message(chat_id=user.telegram_id, text=text)
+            sent += 1
+        except Exception:
+            failed += 1
+
+    await callback.message.answer(
+        f"✅ Рассылка завершена!\n\n"
+        f"📨 Отправлено: {sent}\n"
+        f"❌ Ошибок: {failed}"
+    )
+    await state.clear()
+    await callback.answer()
+
+
+@router.callback_query(F.data == "broadcast_cancel", BroadcastFSM.confirm)
+async def admin_broadcast_cancel(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("⛔", show_alert=True)
+        return
+
+    await state.clear()
+    await callback.message.answer("❌ Рассылка отменена.")
     await callback.answer()
